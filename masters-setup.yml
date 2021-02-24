@@ -1,0 +1,57 @@
+- hosts: masters
+  become: yes
+  vars_files:
+    - vars/main.yml
+  tasks:
+    - name: initialize the cluster
+      shell: kubeadm init --apiserver-advertise-address=192.168.1.85 --pod-network-cidr=10.244.0.0/16 >> cluster_initialized.txt
+      args:
+        chdir: $HOME
+        creates: cluster_initialized.txt
+
+#    - name: Setup kubeconfig for k8s user
+#      command: "{{ item }}"
+#      with_items:
+#        - mkdir -p /home/"{{k8s_user}}"/.kube
+#        - cp -i /etc/kubernetes/admin.conf /home/"{{k8s_user}}"/.kube/config
+#        - chown "{{k8s_user}}":"{{k8s_user}}" /home/"{{k8s_user}}"/.kube/config
+
+    - name: create .kube directory
+      become: yes
+      become_user: "{{k8s_user}}"
+      file:
+        path: $HOME/.kube
+        state: directory
+        mode: 0755
+
+    - name: copy admin.conf to user's kube config
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/automationmgr/.kube/config
+        remote_src: yes
+        owner: "{{k8s_user}}"
+
+#    - name: Install calico pod network
+#      become: no
+#      #command: kubectl create -f https://docs.projectcalico.org/v3.4/getting-started/kubernetes/installation/hosted/calico.yaml
+#      command: kubectl create -f https://docs.projectcalico.org/manifests/calico.yaml  #Had to run this manually: kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+
+#    - name: install Pod network
+#      become: yes
+#      become_user: "{{k8s_user}}"
+#      shell: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/a70459be0084506e4ec919aa1c114638878db11b/Documentation/kube-flannel.yml >> pod_network_setup.txt
+#      args:
+#        chdir: $HOME
+#        creates: pod_network_setup.txt
+
+#    - name: Generate join command
+#      command: kubeadm token create --print-join-command
+#      register: join_command
+
+#    - name: Copy join command to local file
+#      local_action: copy content="{{ join_command.stdout_lines[0] }}" dest="./join-command"
+
+#    - name: Ensure docker is running
+#      service:
+#        name: docker
+#        state: started
